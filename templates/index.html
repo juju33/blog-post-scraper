@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blog Scraper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        .status {
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Blog Scraper</h2>
+        <div class="input-group">
+            <input type="text" id="sitemap-url" placeholder="Enter sitemap URL (e.g., https://example.com/sitemap.xml)">
+            <button id="start-button" onclick="startScraping()">Start Scraping</button>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-bar-fill" style="width: 0%"></div>
+        </div>
+        <div class="status" id="status-text">Ready to start</div>
+        <button id="download-button" onclick="downloadResults()" style="display: none;">Download Results</button>
+    </div>
+
+    <script>
+        let statusCheckInterval;
+
+        function startScraping() {
+            const sitemapUrl = document.getElementById('sitemap-url').value;
+            if (!sitemapUrl) {
+                alert('Please enter a sitemap URL');
+                return;
+            }
+
+            document.getElementById('start-button').disabled = true;
+            document.getElementById('download-button').style.display = 'none';
+
+            fetch('/start_scraping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sitemap_url: sitemapUrl })
+            });
+
+            statusCheckInterval = setInterval(checkStatus, 1000);
+        }
+
+        function checkStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const progressPercent = data.total > 0 ? (data.progress / data.total) * 100 : 0;
+                    document.querySelector('.progress-bar-fill').style.width = `${progressPercent}%`;
+                    
+                    let statusText = `Status: ${data.status}`;
+                    if (data.current_url) {
+                        statusText += `<br>Processing: ${data.current_url}`;
+                    }
+                    if (data.total > 0) {
+                        statusText += `<br>Progress: ${data.progress}/${data.total}`;
+                    }
+                    document.getElementById('status-text').innerHTML = statusText;
+
+                    if (data.status === 'completed') {
+                        clearInterval(statusCheckInterval);
+                        document.getElementById('start-button').disabled = false;
+                        document.getElementById('download-button').style.display = 'block';
+                    }
+                });
+        }
+
+        function downloadResults() {
+            window.location.href = '/download';
+        }
+    </script>
+</body>
+</html>
